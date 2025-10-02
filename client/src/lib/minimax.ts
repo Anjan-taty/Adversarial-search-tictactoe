@@ -1,6 +1,16 @@
 type Player = 'X' | 'O' | '';
 type Board = Player[];
 
+export interface TreeNode {
+  board: Board;
+  move: number;
+  score: number;
+  depth: number;
+  isMaximizing: boolean;
+  children: TreeNode[];
+  bestChild?: TreeNode;
+}
+
 const WINNING_COMBINATIONS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
   [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
@@ -65,6 +75,132 @@ function minimax(board: Board, depth: number, isMaximizing: boolean, alpha: numb
     }
     return minEval;
   }
+}
+
+function minimaxWithTree(board: Board, depth: number, isMaximizing: boolean, alpha: number, beta: number, aiPlayer: Player, move: number): TreeNode {
+  const result = checkWinner(board);
+  const humanPlayer: Player = aiPlayer === 'X' ? 'O' : 'X';
+
+  const node: TreeNode = {
+    board: [...board],
+    move,
+    score: 0,
+    depth,
+    isMaximizing,
+    children: []
+  };
+
+  // Terminal states
+  if (result.winner === aiPlayer) {
+    node.score = 10 - depth;
+    return node;
+  }
+  if (result.winner === humanPlayer) {
+    node.score = depth - 10;
+    return node;
+  }
+  if (result.winner === 'draw') {
+    node.score = 0;
+    return node;
+  }
+
+  const availableMoves = getAvailableMoves(board);
+
+  if (isMaximizing) {
+    // AI is trying to maximize score
+    let maxEval = -Infinity;
+    let bestChild: TreeNode | undefined;
+
+    for (const nextMove of availableMoves) {
+      board[nextMove] = aiPlayer;
+      const childNode = minimaxWithTree(board, depth + 1, false, alpha, beta, aiPlayer, nextMove);
+      board[nextMove] = '';
+
+      node.children.push(childNode);
+
+      if (childNode.score > maxEval) {
+        maxEval = childNode.score;
+        bestChild = childNode;
+      }
+
+      alpha = Math.max(alpha, childNode.score);
+      if (beta <= alpha) break; // Alpha-beta pruning
+    }
+
+    node.score = maxEval;
+    node.bestChild = bestChild;
+  } else {
+    // Human is trying to minimize score
+    let minEval = Infinity;
+    let bestChild: TreeNode | undefined;
+
+    for (const nextMove of availableMoves) {
+      board[nextMove] = humanPlayer;
+      const childNode = minimaxWithTree(board, depth + 1, true, alpha, beta, aiPlayer, nextMove);
+      board[nextMove] = '';
+
+      node.children.push(childNode);
+
+      if (childNode.score < minEval) {
+        minEval = childNode.score;
+        bestChild = childNode;
+      }
+
+      beta = Math.min(beta, childNode.score);
+      if (beta <= alpha) break; // Alpha-beta pruning
+    }
+
+    node.score = minEval;
+    node.bestChild = bestChild;
+  }
+
+  return node;
+}
+
+export function getBestMoveWithTree(board: Board, aiPlayer: Player = 'X'): { move: number; tree: TreeNode } {
+  const availableMoves = getAvailableMoves(board);
+  
+  if (availableMoves.length === 0) return { move: -1, tree: { board: [...board], move: -1, score: 0, depth: 0, isMaximizing: true, children: [] } };
+  
+  // If it's the first move and center is available, take it
+  if (availableMoves.length === 9 && board[4] === '') {
+    return { 
+      move: 4,
+      tree: { board: [...board], move: 4, score: 0, depth: 0, isMaximizing: true, children: [] }
+    };
+  }
+
+  let bestMove = -1;
+  let bestValue = -Infinity;
+  let bestTree: TreeNode | null = null;
+
+  const rootNode: TreeNode = {
+    board: [...board],
+    move: -1,
+    score: 0,
+    depth: 0,
+    isMaximizing: true,
+    children: []
+  };
+
+  for (const move of availableMoves) {
+    board[move] = aiPlayer;
+    const childNode = minimaxWithTree(board, 1, false, -Infinity, Infinity, aiPlayer, move);
+    board[move] = '';
+
+    rootNode.children.push(childNode);
+
+    if (childNode.score > bestValue) {
+      bestValue = childNode.score;
+      bestMove = move;
+      bestTree = childNode;
+    }
+  }
+
+  rootNode.score = bestValue;
+  rootNode.bestChild = bestTree || undefined;
+
+  return { move: bestMove, tree: rootNode };
 }
 
 export function getBestMove(board: Board, aiPlayer: Player = 'X'): number {
