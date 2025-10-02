@@ -29,22 +29,23 @@ function getAvailableMoves(board: Board): number[] {
   return board.map((cell, index) => cell === '' ? index : -1).filter(index => index !== -1);
 }
 
-function minimax(board: Board, depth: number, isMaximizing: boolean, alpha: number, beta: number): number {
+function minimax(board: Board, depth: number, isMaximizing: boolean, alpha: number, beta: number, aiPlayer: Player): number {
   const result = checkWinner(board);
+  const humanPlayer: Player = aiPlayer === 'X' ? 'O' : 'X';
 
   // Terminal states
-  if (result.winner === 'O') return 10 - depth; // AI wins (prefer faster wins)
-  if (result.winner === 'X') return depth - 10; // Human wins (prefer slower losses)
+  if (result.winner === aiPlayer) return 10 - depth; // AI wins (prefer faster wins)
+  if (result.winner === humanPlayer) return depth - 10; // Human wins (prefer slower losses)
   if (result.winner === 'draw') return 0; // Draw
 
   const availableMoves = getAvailableMoves(board);
 
   if (isMaximizing) {
-    // AI (O) is trying to maximize score
+    // AI is trying to maximize score
     let maxEval = -Infinity;
     for (const move of availableMoves) {
-      board[move] = 'O';
-      const eval_ = minimax(board, depth + 1, false, alpha, beta);
+      board[move] = aiPlayer;
+      const eval_ = minimax(board, depth + 1, false, alpha, beta, aiPlayer);
       board[move] = '';
       maxEval = Math.max(maxEval, eval_);
       alpha = Math.max(alpha, eval_);
@@ -52,11 +53,11 @@ function minimax(board: Board, depth: number, isMaximizing: boolean, alpha: numb
     }
     return maxEval;
   } else {
-    // Human (X) is trying to minimize score
+    // Human is trying to minimize score
     let minEval = Infinity;
     for (const move of availableMoves) {
-      board[move] = 'X';
-      const eval_ = minimax(board, depth + 1, true, alpha, beta);
+      board[move] = humanPlayer;
+      const eval_ = minimax(board, depth + 1, true, alpha, beta, aiPlayer);
       board[move] = '';
       minEval = Math.min(minEval, eval_);
       beta = Math.min(beta, eval_);
@@ -66,7 +67,7 @@ function minimax(board: Board, depth: number, isMaximizing: boolean, alpha: numb
   }
 }
 
-export function getBestMove(board: Board): number {
+export function getBestMove(board: Board, aiPlayer: Player = 'X'): number {
   const availableMoves = getAvailableMoves(board);
   
   if (availableMoves.length === 0) return -1;
@@ -80,8 +81,8 @@ export function getBestMove(board: Board): number {
   let bestValue = -Infinity;
 
   for (const move of availableMoves) {
-    board[move] = 'O';
-    const moveValue = minimax(board, 0, false, -Infinity, Infinity);
+    board[move] = aiPlayer;
+    const moveValue = minimax(board, 0, false, -Infinity, Infinity, aiPlayer);
     board[move] = '';
 
     if (moveValue > bestValue) {
