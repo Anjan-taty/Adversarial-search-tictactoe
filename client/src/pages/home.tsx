@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getBestMove, checkWinner } from '@/lib/minimax';
+import { getBestMove, getBestMoveWithTree, checkWinner, TreeNode } from '@/lib/minimax';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Player = 'X' | 'O' | '';
 type Board = Player[];
@@ -15,6 +16,9 @@ export default function Home() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const [computerGoesFirst, setComputerGoesFirst] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [decisionTree, setDecisionTree] = useState<TreeNode | null>(null);
+  const [animatingPath, setAnimatingPath] = useState<number[]>([]);
+  const [showTreeView, setShowTreeView] = useState(false);
 
   useEffect(() => {
     // Check for game end after each move
@@ -38,12 +42,26 @@ export default function Home() {
     // Computer's turn
     if (isComputerTurn && gameStatus === 'playing') {
       const timer = setTimeout(() => {
-        const bestMove = getBestMove([...board], 'X');
-        if (bestMove !== -1) {
-          const newBoard = [...board];
-          newBoard[bestMove] = 'X';
-          setBoard(newBoard);
-          setIsComputerTurn(false);
+        const result = getBestMoveWithTree([...board], 'X');
+        if (result.move !== -1) {
+          setDecisionTree(result.tree);
+          
+          // Animate the best path
+          const path: number[] = [];
+          let current: TreeNode | undefined = result.tree.bestChild;
+          while (current) {
+            path.push(current.move);
+            current = current.bestChild;
+          }
+          setAnimatingPath(path);
+          
+          // Make the move after showing the tree
+          setTimeout(() => {
+            const newBoard = [...board];
+            newBoard[result.move] = 'X';
+            setBoard(newBoard);
+            setIsComputerTurn(false);
+          }, 1000);
         }
       }, 500);
       
@@ -92,6 +110,56 @@ export default function Home() {
     if (gameStatus === 'draw') return '🤝 It\'s a Draw!';
     if (isComputerTurn) return 'Computer is thinking...';
     return 'Your turn! Place O';
+  };
+
+  const renderMiniBoard = (boardState: Board, size: 'small' | 'tiny' = 'small') => {
+    const cellSize = size === 'small' ? 'w-8 h-8 text-sm' : 'w-6 h-6 text-xs';
+    return (
+      <div className={`grid grid-cols-3 gap-1`}>
+        {boardState.map((cell, idx) => (
+          <div
+            key={idx}
+            className={`${cellSize} bg-muted rounded flex items-center justify-center font-bold border border-border`}
+            style={{
+              color: cell === 'X' ? 'var(--player-x)' : cell === 'O' ? 'var(--player-o)' : 'transparent'
+            }}
+          >
+            {cell || ''}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderTreeNode = (node: TreeNode, depth: number = 0, isOnBestPath: boolean = false): JSX.Element => {
+    const isBest = isOnBestPath;
+    const maxDepth = 3; // Limit depth to avoid too large tree
+    
+    if (depth > maxDepth) return <></>;
+
+    return (
+      <div className="ml-4 mt-2">
+        <div className={`flex items-start gap-2 p-2 rounded border ${isBest ? 'border-primary bg-primary/10' : 'border-border'}`}>
+          <div className="flex-shrink-0">
+            {renderMiniBoard(node.board, 'tiny')}
+          </div>
+          <div className="text-xs">
+            <div>Move: {node.move >= 0 ? node.move : 'Root'}</div>
+            <div>Score: {node.score}</div>
+            <div>Type: {node.isMaximizing ? 'MAX' : 'MIN'}</div>
+          </div>
+        </div>
+        {node.children.length > 0 && depth < maxDepth && (
+          <div className="ml-2 border-l-2 border-muted pl-2">
+            {node.children.map((child, idx) => (
+              <div key={idx}>
+                {renderTreeNode(child, depth + 1, isBest && child === node.bestChild)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -204,7 +272,32 @@ export default function Home() {
                 </svg>
                 Reset Game
               </Button>
+              {decisionTree && (
+                <Button 
+                  onClick={() => setShowTreeView(!showTreeView)}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid="button-toggle-tree"
+                >
+                  {showTreeView ? 'Hide' : 'Show'} Decision Tree
+                </Button>
+              )}
             </div>
+
+            {/* Minimax Decision Tree Visualization */}
+            {showTreeView && decisionTree && (
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-semibold mb-4">AI Decision Tree (Minimax Algorithm)</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    This shows all possible moves the computer evaluated. The highlighted path is the one it chose.
+                  </p>
+                  <ScrollArea className="h-[600px] w-full">
+                    {renderTreeNode(decisionTree, 0, true)}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Game Stats */}
             <div className="grid grid-cols-3 gap-4">
