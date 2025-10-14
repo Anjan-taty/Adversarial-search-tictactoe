@@ -37,7 +37,9 @@ jobs:
           node-version: 18
           cache: 'npm'
       - name: Install Dependencies
-        run: npm install
+        run: |
+          npm install vite@6.3.6
+          npm install
       - name: Build
         run: npm run build
       - name: Setup Pages
