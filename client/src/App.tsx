@@ -1,17 +1,24 @@
-import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 
+const base =
+  import.meta.env.MODE === "production"
+    ? "/Tic-Tac-Toe-By-Using-Mini-Max/"
+    : "/";
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route component={NotFound} />
-    </Switch>
+    <WouterRouter base={base}>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route component={NotFound} />
+      </Switch>
+    </WouterRouter>
   );
 }
 
