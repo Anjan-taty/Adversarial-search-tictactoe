@@ -6,7 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig(async ({ command, mode }) => {
   // isProduction = true for build and preview
-  const isProduction = mode === "production";
+  const isProduction = mode === "production" && process.env.NETLIFY !== "true";
   const basePath = isProduction ? "/Tic-Tac-Toe-By-Using-Mini-Max/" : "/";
 
   return {
