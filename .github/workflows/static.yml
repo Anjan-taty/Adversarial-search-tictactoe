@@ -13,14 +13,11 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-        working-directory: ./client
-      - run: npm run build
-        working-directory: ./client
+      - run: npm run build:gh
       - name: Add .nojekyll
-        run: echo "" > .nojekyll
-        working-directory: ./client/dist
+        run: echo "" > dist/.nojekyll
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./client/dist
+          publish_dir: ./dist
